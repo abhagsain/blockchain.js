@@ -30,6 +30,7 @@ Blockchain.prototype.createNewTransaction = function(amount, sender, receiver) {
     receiver,
   };
   this.pendingTransaction.push(transaction);
+  return this.getLastBlock()["index"] + 1;
 };
 Blockchain.prototype.proofOfWork = function(previousHash, currentBlock) {
   let nounce = 0;
@@ -39,5 +40,8 @@ Blockchain.prototype.proofOfWork = function(previousHash, currentBlock) {
     hash = this.hashBlock(previousHash, currentBlock, nounce);
   }
   return nounce;
+};
+Blockchain.prototype.getLastBlock = function() {
+  return this.chain[this.chain.length - 1];
 };
 module.exports = Blockchain;
