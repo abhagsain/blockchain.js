@@ -7,7 +7,7 @@ const Blockchain = function() {
   this.currentNodeURL = currentNodeURL;
   this.networkNodes = [];
   //   Creates a genesis block (first block of our blockchain)
-  this.createNewBlock("0", "0", 0);
+  this.addBlockToChain(this.createNewBlock("0", "0", 0));
 };
 Blockchain.prototype.createNewBlock = function(previousHash, hash, nounce) {
   const block = {
@@ -19,8 +19,10 @@ Blockchain.prototype.createNewBlock = function(previousHash, hash, nounce) {
     previousHash,
   };
   this.pendingTransaction = [];
-  this.chain.push(block);
   return block;
+};
+Blockchain.prototype.addBlockToChain = function(block) {
+  this.chain.push(block);
 };
 Blockchain.prototype.hashBlock = function(previousHash, currentBlock, nounce) {
   const dataAsString =

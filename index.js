@@ -97,7 +97,8 @@ app.post("/register-and-broadcast-node", (req, res) => {
       })
       .then(data => {
         return res.json({ message: "New Node Add to the network" });
-      });
+      })
+      .catch(err => res.json({ err }));
   }
   // return res.json({ message: "Enter a URL to be added to the network" });
 });
@@ -141,16 +142,56 @@ app.get("/mine", function(req, res) {
   // current block hash
   const currentBlock = {
     index: previousBlock.index + 1,
-    transactions: coolCoin.pendingTransaction,
+    transactions: bitcoin.pendingTransaction,
   };
   // a valid nounce
-  const nounce = coolCoin.proofOfWork(previousHash, currentBlock);
-  const currentHash = coolCoin.hashBlock(previousHash, currentBlock, nounce);
+  const nounce = bitcoin.proofOfWork(previousHash, currentBlock);
+  const currentHash = bitcoin.hashBlock(previousHash, currentBlock, nounce);
   // create a new block
-  coolCoin.createNewTransaction(12.5, "00000", NODE_ADDRESS);
-  res.json({
-    block: coolCoin.createNewBlock(previousHash, currentHash, nounce),
+  bitcoin.createNewTransaction(12.5, "00000", NODE_ADDRESS);
+  const block = bitcoin.createNewBlock(previousHash, currentHash, nounce);
+  const promises = [];
+  bitcoin.networkNodes.forEach(node => {
+    const requestOption = {
+      method: "POST",
+      uri: node + "/mine/broadcast",
+      json: true,
+      body: { block },
+    };
+    promises.push(rp(requestOption));
   });
+  Promise.all(promises)
+    .then(_ => {
+      const requestOption = {
+        uri: bitcoin.currentNodeURL + "/transaction",
+        method: "POST",
+        json: true,
+        body: {
+          amount: 12.5,
+          sender: "0000",
+          receiver: NODE_ADDRESS,
+        },
+      };
+      return rp(requestOption);
+    })
+    .then(_ => {
+      return res.json({ message: block });
+    });
+});
+app.post("/mine/broadcast", (req, res) => {
+  const { block } = req.body;
+  const lastBlock = bitcoin.getLastBlock();
+  if (
+    block &&
+    lastBlock.hash === block.previousHash &&
+    lastBlock.index + 1 === block.index
+  ) {
+    bitcoin.addBlockToChain(block);
+    bitcoin.pendingTransaction = [];
+    res.json({ message: "ADDED" });
+  } else {
+    return res.json({ message: "Block rejected", block });
+  }
 });
 app.listen(PORT, (req, res) => {
   console.log(`Server Started @ ${PORT}`);
