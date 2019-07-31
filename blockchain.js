@@ -6,8 +6,19 @@ const Blockchain = function() {
   this.pendingTransaction = [];
   this.currentNodeURL = currentNodeURL;
   this.networkNodes = [];
+
   //   Creates a genesis block (first block of our blockchain)
   this.addBlockToChain(this.createNewBlock("0", "0", 0));
+};
+Blockchain.prototype.tempAddNetworkNode = function() {
+  const ports = [
+    "http://localhost:3001",
+    "http://localhost:3003",  
+    "http://localhost:3002",
+  ];
+  const memberNodes = ports.filter(port => port !== currentNodeURL);
+  console.log(`Member Nodes`, memberNodes);
+  this.networkNodes = memberNodes;
 };
 Blockchain.prototype.createNewBlock = function(previousHash, hash, nounce) {
   const block = {

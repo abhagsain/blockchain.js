@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const Blockchain = require("./blockchain");
 const rp = require("request-promise");
 const bitcoin = new Blockchain();
+const currentNodeURL = process.argv[3];
 const NODE_ADDRESS = uuid()
   .split("-")
   .join("");
@@ -108,11 +109,13 @@ app.post("/register-node", (req, res) => {
   if (newNodeURL) {
     const notAlreadyPresent = bitcoin.networkNodes.indexOf(newNodeURL) === -1;
     const notCurrentURL = bitcoin.currentNodeURL !== newNodeURL;
+    console.log("TCL: notAlreadyPresent", notAlreadyPresent);
+
     if (notAlreadyPresent && notCurrentURL) {
       // if newNodeURL isn't already present & it's not the current node
       bitcoin.networkNodes.push(newNodeURL);
       return res.json({ messge: "New Node Added" });
-    }
+    } else return res.json({ message: "Node already present" });
   }
   return res.json({ message: "Please include a URL" });
 });
@@ -131,7 +134,7 @@ app.post("/register-node-bulk", (req, res) => {
         bitcoin.networkNodes.push(node);
       }
     });
-    res.json({ message: "Bulk add successful" });
+    return res.json({ message: "Bulk add successful" });
   }
   return res.json({ message: "Please send valid data" });
 });
@@ -148,8 +151,9 @@ app.get("/mine", function(req, res) {
   const nounce = bitcoin.proofOfWork(previousHash, currentBlock);
   const currentHash = bitcoin.hashBlock(previousHash, currentBlock, nounce);
   // create a new block
-  bitcoin.createNewTransaction(12.5, "00000", NODE_ADDRESS);
   const block = bitcoin.createNewBlock(previousHash, currentHash, nounce);
+  // Push this block into the current node's chain
+  bitcoin.addBlockToChain(block);
   const promises = [];
   bitcoin.networkNodes.forEach(node => {
     const requestOption = {
@@ -168,14 +172,14 @@ app.get("/mine", function(req, res) {
         json: true,
         body: {
           amount: 12.5,
-          sender: "0000",
+          sender: "000" + currentNodeURL,
           receiver: NODE_ADDRESS,
         },
       };
       return rp(requestOption);
     })
     .then(_ => {
-      return res.json({ message: block });
+      return res.json({ block });
     });
 });
 app.post("/mine/broadcast", (req, res) => {
